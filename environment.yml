@@ -1,0 +1,25 @@
+name: dynamic_slam
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib
+  - tqdm
+  - pip
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.8  # Change to cpuonly if you don't have NVIDIA GPU
+  - opencv
+  - pip:
+    - ultralytics      # For YOLOv8
+    - evo              # For trajectory evaluation
+    - open3d           # Optional: nice 3D visualization
+    - flask>=2.0.0     # Web application
+    - werkzeug>=2.0.0  # Flask dependency

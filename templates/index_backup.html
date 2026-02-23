@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic SLAM - Visual Odometry Made Easy</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark bg-gradient-primary">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-camera-video"></i> Dynamic SLAM - Visual Odometry Made Easy
+            </span>
+            <div>
+                <button class="btn btn-sm btn-outline-light me-2" id="helpBtn" data-bs-toggle="modal" data-bs-target="#helpModal">
+                    <i class="bi bi-question-circle"></i> Help
+                </button>
+                <button class="btn btn-sm btn-light" id="tutorialBtn">
+                    <i class="bi bi-play-circle"></i> Start Tutorial
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Welcome Banner (shown on first visit) -->
+    <div class="container-fluid mt-3" id="welcomeBanner" style="display: none;">
+        <div class="alert alert-info alert-dismissible fade show welcome-banner" role="alert">
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <h4 class="alert-heading"><i class="bi bi-stars"></i> Welcome to Dynamic SLAM!</h4>
+            <p><strong>What is this?</strong> This tool helps you track camera movement through video frames (like how self-driving cars know where they are).</p>
+            <hr>
+            <p class="mb-0">
+                <strong>New here?</strong> Click the <button class="btn btn-sm btn-primary" id="tutorialBtnInline"><i class="bi bi-play-circle"></i> Start Tutorial</button> button to learn how to use this tool in 2 minutes!
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container-fluid mt-3">
+        <!-- Step by Step Guide -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="step-indicator">
+                    <div class="step step-active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Choose Video</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Adjust Settings</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Run Analysis</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-label">View Results</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Panel - Controls -->
+            <div class="col-md-4">
+                <!-- STEP 1: Sequence Selection -->
+                <div class="card mb-3 step-card" id="step1Card">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <i class="bi bi-camera-reels"></i> <strong>Step 1:</strong> Choose Your Video Sequence
+                        <i class="bi bi-info-circle float-end" data-bs-toggle="tooltip" 
+                           title="Select which video sequence you want to analyze. Each sequence is a series of images from a camera."></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-box mb-3">
+                            <i class="bi bi-lightbulb"></i>
+                            <strong>What's a sequence?</strong> It's a collection of images taken by a moving camera (like driving footage).
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Select Video Sequence:</label>
+                            <select id="sequenceSelect" class="form-select form-select-lg">
+                                <option value="">Loading sequences...</option>
+                            </select>
+                            <small class="text-muted" id="sequenceInfo">
+                                <i class="bi bi-info"></i> <span id="sequenceInfoText">Select a sequence above</span>
+                            </small>
+                        </div>
+                        
+                        <div class="advanced-toggle mb-3">
+                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#frameRange">
+                                <i class="bi bi-sliders"></i> Advanced: Select Frame Range (Optional)
+                            </button>
+                        </div>
+                        
+                        <div class="collapse" id="frameRange">
+                            <div class="card card-body bg-light">
+                                <p class="small mb-2"><i class="bi bi-info-circle"></i> Process only a portion of the video:</p>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <label class="form-label small">Start Frame:</label>
+                                        <input type="number" id="startFrame" class="form-control" value="0" min="0">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small">End Frame:</label>
+                                        <input type="number" id="endFrame" class="form-control" placeholder="All">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Configuration (Optional) -->
+                <div class="card mb-3 step-card" id="step2Card">
+                    <div class="card-header bg-gradient-secondary text-white">
+                        <i class="bi bi-gear"></i> <strong>Step 2:</strong> Adjust Settings (Optional)
+                        <i class="bi bi-info-circle float-end" data-bs-toggle="tooltip" 
+                           title="These are optional settings. The defaults work great! Only change if you know what you're doing."></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-box mb-3 bg-success-light">
+                            <i class="bi bi-check-circle"></i>
+                            <strong>Beginners:</strong> You can skip this! The default settings work perfectly for most cases.
+                        </div>
+                        
+                        <div class="advanced-toggle mb-3">
+                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSettings">
+                                <i class="bi bi-sliders"></i> Show Advanced Settings
+                            </button>
+                        </div>
+                        
+                        <div class="collapse" id="advancedSettings">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Feature Detection Method:
+                                    <i class="bi bi-question-circle" data-bs-toggle="tooltip" 
+                                       title="How the system finds unique points in images. ORB is fastest, SIFT is most accurate."></i>
+                                </label>
+                                <select id="featureType" class="form-select">
+                                    <option value="ORB">ORB - Fast & Good (Recommended)</option>
+                                    <option value="SIFT">SIFT - Slower but More Accurate</option>
+                                    <option value="AKAZE">AKAZE - Balanced</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Maximum Features: <span id="maxFeaturesValue" class="badge bg-primary">3000</span>
+                                    <i class="bi bi-question-circle" data-bs-toggle="tooltip" 
+                                       title="How many unique points to track. More = better quality but slower processing."></i>
+                                </label>
+                                <input type="range" id="maxFeatures" class="form-range" min="500" max="10000" step="500" value="3000">
+                                <div class="d-flex justify-content-between small text-muted">
+                                    <span>Faster</span>
+                                    <span>Better Quality</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Object Detection Sensitivity: <span id="yoloConfValue" class="badge bg-primary">0.30</span>
+                                    <i class="bi bi-question-circle" data-bs-toggle="tooltip" 
+                                       title="How confident the system must be to detect moving objects (cars, people). Higher = fewer false detections."></i>
+                                </label>
+                                <input type="range" id="yoloConf" class="form-range" min="0.1" max="0.9" step="0.05" value="0.30">
+                                <div class="d-flex justify-content-between small text-muted">
+                                    <span>More Detections</span>
+                                    <span>Fewer but Reliable</span>
+                                </div>
+                            </div>
+                            
+                            <button id="updateConfigBtn" class="btn btn-secondary w-100">
+                                <i class="bi bi-check-circle"></i> Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Quick Start & Control -->
+                <div class="card mb-3 step-card" id="step3Card">
+                    <div class="card-header bg-gradient-success text-white">
+                        <i class="bi bi-rocket"></i> <strong>Step 3:</strong> Run the Analysis
+                    </div>
+                    <div class="card-body">
+                        <div class="info-box mb-3">
+                            <i class="bi bi-lightbulb"></i>
+                            <strong>First time?</strong> Try the "Quick Demo" button below to see instant results!
+                        </div>
+                        
+                        <!-- Quick Start Options -->
+                        <div class="mb-3">
+                            <label class="fw-bold mb-2">Quick Start Options:</label>
+                            <div class="d-grid gap-2">
+                                <button id="quickDemoBtn" class="btn btn-lg btn-outline-primary">
+                                    <i class="bi bi-star"></i> Quick Demo (50 Frames) - 1 Minute
+                                </button>
+                                <button id="demoFeaturesBtn" class="btn btn-outline-info">
+                                    <i class="bi bi-image"></i> Show Feature Detection Example
+                                </button>
+                                <button id="demoMatchingBtn" class="btn btn-outline-info">
+                                    <i class="bi bi-diagram-3"></i> Show Feature Matching Example
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Full Processing -->
+                        <div class="mb-3">
+                            <label class="fw-bold mb-2">Full Processing:</label>
+                            <div class="d-grid gap-2">
+                                <button id="startBtn" class="btn btn-success btn-lg">
+                                    <i class="bi bi-play-fill"></i> Process Complete Sequence
+                                </button>
+                                <button id="stopBtn" class="btn btn-danger" disabled>
+                                    <i class="bi bi-stop-fill"></i> Stop Processing
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning small mb-0">
+                            <i class="bi bi-clock"></i> <strong>Processing Time:</strong> A full sequence may take 5-20 minutes depending on length and your computer speed.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Status and Results -->
+            <div class="col-md-8">
+                <!-- STEP 4: Processing Status -->
+                <div class="card mb-3">
+                    <div class="card-header bg-gradient-info text-white">
+                        <i class="bi bi-activity"></i> <strong>Step 4:</strong> Watch Progress & View Results
+                        <i class="bi bi-info-circle float-end" data-bs-toggle="tooltip" 
+                           title="See real-time progress of your analysis here. Results appear automatically when done!"></i>
+                    </div>
+                    <div class="card-body">
+                        <!-- Status Overview -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="status-box">
+                                    <div class="status-label">Current Status</div>
+                                    <div class="status-value">
+                                        <span id="statusText" class="badge bg-secondary">Ready</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="status-box">
+                                    <div class="status-label">Processing Sequence</div>
+                                    <div class="status-value" id="currentSequence">-</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="status-box">
+                                    <div class="status-label">Estimated Time</div>
+                                    <div class="status-value" id="estimatedTime">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Progress:</strong>
+                                <span class="text-muted small" id="progressText">Waiting to start...</span>
+                            </div>
+                            <div class="progress" style="height: 30px;">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                     role="progressbar" style="width: 0%">
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Message Box -->
+                        <div class="alert alert-info mb-0" id="messageBox">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-info-circle fs-4 me-3"></i>
+                                <div>
+                                    <div class="fw-bold">What happens during processing?</div>
+                                    <div id="messageText">The system tracks camera movement by detecting unique points in each image and matching them across frames. Click "Quick Demo" to try it!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Card -->
+                <div class="card mb-3" id="statsCard" style="display: none;">
+                    <div class="card-header bg-gradient-warning">
+                        <i class="bi bi-graph-up"></i> Analysis Statistics
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-primary">
+                                        <i class="bi bi-camera"></i>
+                                    </div>
+                                    <h3 id="statPoses" class="stat-number">-</h3>
+                                    <div class="stat-label">Frames Processed</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-success">
+                                        <i class="bi bi-stopwatch"></i>
+                                    </div>
+                                    <h3 id="statTime" class="stat-number">-</h3>
+                                    <div class="stat-label">Processing Time</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-info">
+                                        <i class="bi bi-speedometer"></i>
+                                    </div>
+                                    <h3 id="statFPS" class="stat-number">-</h3>
+                                    <div class="stat-label">Frames/Second</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <div class="stat-icon bg-danger">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                    <h3 class="stat-number text-success">✓</h3>
+                                    <div class="stat-label">Complete!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Card -->
+                <div class="card" id="resultsCard" style="display: none;">
+                    <div class="card-header bg-gradient-dark text-white">
+                        <i class="bi bi-images"></i> Your Results - Visual Analysis
+                        <i class="bi bi-info-circle float-end" data-bs-toggle="tooltip" 
+                           title="Click on any image to view it larger. You can download results individually or all at once."></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-box mb-3">
+                            <i class="bi bi-book"></i>
+                            <strong>Understanding the results:</strong> 
+                            <ul class="mb-0 mt-2">
+                                <li><strong>Trajectory:</strong> Shows the estimated path of the camera</li>
+                                <li><strong>Feature Matches:</strong> Shows how points are tracked between frames</li>
+                                <li><strong>Error Plots:</strong> Compares our estimate with ground truth (when available)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="row" id="resultsGallery">
+                            <!-- Results will be populated here -->
+                        </div>
+                        
+                        <div id="noResults" class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="bi bi-image" style="font-size: 4rem; color: #dee2e6;"></i>
+                                <h5 class="mt-3 text-muted">No Results Yet</h5>
+                                <p class="text-muted">Start processing to generate visualizations and analysis results.</p>
+                                <button class="btn btn-primary btn-lg mt-2" onclick="document.getElementById('quickDemoBtn').click()">
+                                    <i class="bi bi-rocket"></i> Run Quick Demo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="modal fade" id="imageModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalTitle">Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" class="img-fluid" alt="Result">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
